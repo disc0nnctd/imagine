@@ -1,0 +1,824 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Imagine</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--fg:#1d1d1b;--mute:#6b6a66;--line:#e2e0da;--accent:#3d5afe;--on-accent:#fff;--err:#c62828;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1e1e1c;--fg:#ecebe6;--mute:#9c9a93;--line:#33322f;--accent:#8c9eff;--on-accent:#111;--err:#ef9a9a;color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:24px 16px 64px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:16px}
+h1{font-size:22px;margin:0;margin-right:auto}
+.sub{color:var(--mute);margin:0 0 16px;font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px}
+textarea,input,select{width:100%;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px}
+textarea{min-height:96px;resize:vertical}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:end}
+.row>label{flex:1 1 120px;font-size:13px;color:var(--mute);display:grid;gap:4px}
+.chk{flex:0 0 auto!important;display:flex!important;align-items:center;gap:6px;color:var(--fg)!important;padding-bottom:10px}
+.chk input{width:auto}
+button{font:inherit;font-weight:600;background:var(--accent);color:var(--on-accent);border:0;border-radius:8px;padding:10px 20px;cursor:pointer}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button.small{padding:4px 10px;font-size:12px}
+button:disabled{opacity:.5;cursor:default}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:transparent;color:var(--fg);border-radius:0;font-weight:500;padding:8px 14px}
+.seg button.on{background:var(--accent);color:var(--on-accent)}
+details summary{cursor:pointer;color:var(--mute);font-size:13px}
+h2{font-size:15px;margin:28px 0 10px}
+.list{display:grid;gap:8px}
+.job{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.job .p{flex:1 1 240px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.job .s{font-size:13px;color:var(--mute);white-space:nowrap}
+.job .err{flex-basis:100%;color:var(--err);font-size:12px;white-space:pre-wrap;word-break:break-word}
+.bar{height:4px;background:var(--line);border-radius:2px;flex-basis:100%;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);transition:width 1s linear}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.cell{position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--card)}
+.cell img{display:block;width:100%;aspect-ratio:1;object-fit:cover;cursor:zoom-in}
+.cell .ph{aspect-ratio:1;display:grid;place-items:center;color:var(--mute);font-size:12px;padding:8px;text-align:center}
+.cell .acts{position:absolute;right:6px;top:6px;display:flex;gap:4px}
+.cell .cap{font-size:12px;color:var(--mute);padding:6px 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.empty{color:var(--mute);font-size:13px}
+.temp{background:var(--card);border:2px dashed var(--accent);border-radius:12px;padding:10px;margin-bottom:10px}
+.temp img{display:block;max-width:100%;border-radius:8px}
+.temp .bar2{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:13px;color:var(--mute)}
+.temp .bar2 span{margin-right:auto}
+.inputs{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.inputs .th{position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid var(--line)}
+.inputs .th img{width:100%;height:100%;object-fit:cover;display:block}
+.inputs .th b{position:absolute;left:4px;top:2px;font-size:11px;background:var(--card);border-radius:4px;padding:0 4px}
+.inputs .th button{position:absolute;right:2px;top:2px;padding:0 6px;font-size:12px;line-height:18px;border-radius:4px}
+.upl{font-size:13px;color:var(--mute)}
+.upl input{display:none}
+.upl span{display:inline-block;border:1px dashed var(--line);border-radius:8px;padding:8px 12px;cursor:pointer;color:var(--fg)}
+.gate-wrap{position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:start center;padding:12vh 16px 16px;z-index:20}
+.msg{color:var(--err);font-size:13px;min-height:1em}
+.note{font-size:12px;color:var(--mute)}
+.series{background:var(--card);border:1px solid var(--accent);border-radius:10px;padding:8px 12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.series .p{flex:1 1 200px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.series .s{font-size:13px;color:var(--mute)}
+.story{margin-bottom:12px}
+.story .hd{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.story .hd b{font-size:16px}
+.stext{white-space:pre-wrap;line-height:1.6;max-height:60vh;overflow:auto;padding:8px 0}
+.live{white-space:pre-wrap;line-height:1.6;max-height:40vh;overflow:auto;font-size:14px;color:var(--fg)}
+.scenes{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.scenes .cell img{aspect-ratio:auto}
+.scenes .cap{white-space:normal;color:var(--fg);font-size:13px}
+.scenes .badge{position:absolute;left:6px;top:6px;background:rgba(0,0,0,.65);color:#fff;font-size:12px;padding:2px 8px;border-radius:6px}
+.scenes .hist{display:flex;gap:4px;padding:0 8px 6px;flex-wrap:wrap}
+.scenes .hist img{width:36px;height:36px;aspect-ratio:1;object-fit:cover;border-radius:4px;opacity:.7}
+.scenes .scedit{grid-column:1/-1}
+.cast{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start}
+.castm{display:grid;grid-template-columns:64px 1fr;gap:6px;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px;width:260px}
+.castm img{width:64px;height:64px;object-fit:cover;border-radius:6px;grid-row:span 2}
+.castm input{padding:4px 6px;font-size:13px}
+.castm button{grid-column:2;justify-self:end;padding:0 8px;font-size:12px}
+.castv{display:flex;gap:6px;flex-wrap:wrap}
+.castv span{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--mute)}
+.castv img{width:32px;height:32px;object-fit:cover;border-radius:50%}
+.improve{border:1px dashed var(--accent);border-radius:10px;padding:10px;display:grid;gap:8px}
+.improve textarea{min-height:80px}
+.improve .row{align-items:center}
+.improve .st{font-size:12px;color:var(--mute);margin-right:auto}
+#lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);display:grid;place-items:center;padding:16px;z-index:10;cursor:zoom-out}
+#lightbox img{max-width:100%;max-height:100%;border-radius:8px}
+.tabs{display:flex;gap:6px;margin:28px 0 10px;flex-wrap:wrap}
+.lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.lib .cell img{aspect-ratio:1}
+.lib .cell input{font-size:13px;padding:4px 6px;margin:4px 6px 0;width:calc(100% - 12px)}
+.lib .cell .row{padding:4px 6px 6px;gap:4px}
+.pick .cell{cursor:pointer}
+.pick .cell img{cursor:pointer}
+.picker{width:100%;max-width:720px;max-height:76vh;overflow:auto}
+.tabs button{background:transparent;color:var(--mute);font-weight:600;padding:6px 12px;border:1px solid transparent}
+.tabs button.on{color:var(--fg);border-color:var(--line);background:var(--card)}
+</style>
+</head>
+<body>
+<main>
+
+<section id="app">
+<header>
+  <h1>Imagine</h1>
+  <div class="seg" id="modes">
+    <button type="button" data-m="normal" class="on">Normal</button>
+    <button type="button" data-m="temporary">Temporary</button>
+  </div>
+</header>
+<p class="sub" id="modeNote"></p>
+
+<form id="f" class="card">
+  <textarea id="prompt" placeholder="Describe the image. Put exact text in quotes, e.g. a sign reading &quot;OPEN&quot;." required></textarea>
+  <div class="row"><button type="button" class="ghost small" id="impOpen">✨ Improve prompt</button></div>
+  <div class="improve" id="imp" hidden>
+    <input id="impHint" placeholder="Optional direction, e.g. more cinematic, film photo, anime style">
+    <textarea id="impOut" placeholder="The improved prompt appears here. You can edit it."></textarea>
+    <div class="row"><span class="st" id="impSt">Runs on this PC's local model. Nothing is saved.</span>
+      <button type="button" class="ghost small" id="impGo">Improve</button>
+      <button type="button" class="small" id="impUse" disabled>Use this</button>
+      <button type="button" class="ghost small" id="impClose">Close</button></div>
+  </div>
+  <div class="inputs" id="inputs">
+    <label class="upl"><input type="file" id="file" accept="image/*" multiple><span>+ Add image to edit</span></label>
+    <button type="button" class="ghost small" id="fromLib">+ From library</button>
+  </div>
+  <div class="row">
+    <label>Shape
+      <select id="aspect">
+        <option value="square">Square</option>
+        <option value="portrait">Portrait</option>
+        <option value="landscape">Landscape</option>
+        <option value="wide">Wide</option>
+        <option value="tall">Tall</option>
+      </select>
+    </label>
+    <label>How many
+      <input id="count" type="number" min="1" max="20" value="1">
+    </label>
+    <label>Seed (first image)
+      <input id="seed" inputmode="numeric" placeholder="random">
+    </label>
+    <label class="chk"><input type="checkbox" id="forever"> Keep going</label>
+    <label class="chk"><input type="checkbox" id="fast"> Fast (768px)</label>
+    <button type="submit">Generate</button>
+  </div>
+  <details><summary>Negative prompt</summary>
+    <input id="negative" placeholder="Things to avoid" style="margin-top:8px">
+  </details>
+  <div class="note">Each variation uses a new random seed. "Keep going" makes variations until you press Stop.</div>
+</form>
+
+<div id="seriesBox" hidden>
+  <h2>Running</h2>
+  <div class="list" id="series"></div>
+</div>
+
+<div id="viewer" hidden>
+  <h2>Temporary images</h2>
+  <p class="sub">Deleted from Predator and the server. They exist only in this tab; close the tab or press Discard and they're gone.</p>
+  <div id="temps"></div>
+</div>
+
+<h2>Queue</h2>
+<div class="list" id="jobs"><p class="empty">Nothing queued.</p></div>
+
+<div class="tabs">
+  <button type="button" data-t="gallery" class="on">Gallery</button>
+  <button type="button" data-t="stories">Stories</button>
+  <button type="button" data-t="library">Library</button>
+  <button type="button" class="ghost small" id="reload" style="margin-left:auto">↻ Refresh</button>
+</div>
+<div id="tab-gallery"><div class="grid" id="gallery"></div></div>
+<div id="tab-stories" hidden>
+  <div class="card">
+    <div class="row">
+      <div class="seg" id="storyHow"><button type="button" data-h="ai" class="on">✍️ Write it for me</button><button type="button" data-h="me">📝 I'll write it</button></div>
+      <span class="note" id="storyNote"></span>
+    </div>
+    <div id="storyAi" class="card" style="border:0;padding:0">
+      <textarea id="stIdea" placeholder="What's the story about? Characters, setting, what happens…"></textarea>
+      <div class="row">
+        <label>Genre / style<input id="stGenre" placeholder="e.g. romance, noir thriller, fairy tale"></label>
+        <label>Length<select id="stLen"><option value="short">Short (~300 words, ~2 min)</option><option value="medium" selected>Medium (~700 words, ~4 min)</option><option value="long">Long (~1200 words, ~7 min)</option></select></label>
+        <button type="button" id="stWrite">Write story</button>
+      </div>
+    </div>
+    <div id="storyMe" class="card" style="border:0;padding:0" hidden>
+      <input id="stTitle" placeholder="Title">
+      <textarea id="stText" style="min-height:220px" placeholder="Write your story here."></textarea>
+      <div class="row"><button type="button" id="stSave">Save story</button></div>
+    </div>
+    <details id="stCastBox"><summary>Cast (optional): photos of people, animals, objects, places</summary>
+      <p class="note">The writer looks at each photo (~25 s each) and uses them by name; picture stories draw each scene from these photos. Up to 8.</p>
+      <div class="cast" id="stCast"></div>
+    </details>
+    <div class="msg" id="stMsg"></div>
+  </div>
+  <div id="storyLive"></div>
+  <h2>Your stories</h2>
+  <div id="stories"><p class="empty">No stories yet.</p></div>
+</div>
+<div id="tab-library" hidden>
+  <p class="sub">Reusable reference photos: people, objects, places. Use them with "+ From library" when editing images or building a story cast.</p>
+  <div class="row"><label class="upl"><input type="file" accept="image/*" multiple id="libAddN"><span>+ Add photos</span></label></div>
+  <div class="lib" id="libN"></div>
+</div>
+</section>
+
+<div id="pickWrap" class="gate-wrap" hidden>
+<section class="card picker">
+  <div class="row"><b>From library</b><span class="note" id="pickNote" style="margin-right:auto"></span>
+    <button type="button" class="ghost small" id="pickClose">Close</button></div>
+  <div class="lib pick" id="pickGrid"></div>
+</section>
+</div>
+
+<div id="lightbox" hidden><img alt=""></div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const H = {'Content-Type': 'application/json', 'X-Imagine': '1'};
+const post = (url, body) => fetch(url, {method: 'POST', headers: H, body: JSON.stringify(body || {})});
+
+// ── modes ──────────────────────────────────────────────────────────────────
+const NOTES = {
+  normal: 'Saved to the gallery on this PC.',
+  temporary: 'Shown once in this tab, then deleted everywhere. Nothing is saved.'};
+let mode = 'normal';
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('#modes button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  $('modeNote').textContent = NOTES[m];
+  storyNote();
+}
+$('modes').onclick = e => { if (e.target.dataset.m) setMode(e.target.dataset.m); };
+function setTab(t) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  $('tab-gallery').hidden = t !== 'gallery';
+  $('tab-stories').hidden = t !== 'stories';
+  $('tab-library').hidden = t !== 'library';
+  if (t === 'library') renderLibrary(true);
+  if (t === 'stories') { storySig = ''; refresh(); }
+}
+document.querySelector('.tabs').onclick = e => { if (e.target.dataset.t) setTab(e.target.dataset.t); };
+
+// ── form ───────────────────────────────────────────────────────────────────
+let inputs = [];
+const readAs = blob => new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(blob); });
+async function addInput(blob) { if (inputs.length < 4) { inputs.push({data: await readAs(blob)}); drawInputs(); } }
+function drawInputs() {
+  $('inputs').querySelectorAll('.th').forEach(e => e.remove());
+  const add = $('inputs').querySelector('.upl');
+  inputs.forEach((inp, i) => {
+    const d = document.createElement('div');
+    d.className = 'th';
+    d.innerHTML = `<img src="${inp.data}" alt=""><b>image${i + 1}</b><button type="button" class="ghost">×</button>`;
+    d.querySelector('button').onclick = () => { inputs.splice(i, 1); drawInputs(); };
+    $('inputs').insertBefore(d, add);
+  });
+  add.hidden = inputs.length >= 4;
+  $('aspect').disabled = inputs.length > 0;
+}
+$('file').addEventListener('change', async e => { for (const f of e.target.files) await addInput(f); e.target.value = ''; });
+async function editFrom(url) { await addInput(await (await fetch(url)).blob()); $('prompt').focus(); scrollTo({top: 0, behavior: 'smooth'}); }
+// ── prompt improver (local LLM, nothing stored) ────────────────────────────
+$('impOpen').onclick = () => { $('imp').hidden = !$('imp').hidden; if (!$('imp').hidden && $('prompt').value.trim()) improve(); };
+$('impClose').onclick = () => { $('imp').hidden = true; $('impOut').value = ''; $('impHint').value = ''; };
+$('impGo').onclick = () => improve();
+$('impHint').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); improve(); } };
+$('impUse').onclick = () => { $('prompt').value = $('impOut').value; $('imp').hidden = true; $('impOut').value = ''; };
+$('impOut').oninput = () => { $('impUse').disabled = !$('impOut').value.trim(); };
+async function improve() {
+  if (!$('prompt').value.trim()) { $('impSt').textContent = 'Write a prompt first.'; return; }
+  $('impGo').disabled = $('impUse').disabled = true;
+  const t0 = Date.now(), tick = setInterval(() => { $('impSt').textContent = `Thinking… ${Math.round((Date.now() - t0) / 1000)}s`; }, 1000);
+  try {
+    const r = await post('api/improve', {prompt: $('prompt').value, hint: $('impHint').value, edit: inputs.length > 0});
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error);
+    $('impOut').value = j.prompt;
+    $('impSt').textContent = `Done in ${Math.round((Date.now() - t0) / 1000)}s. Edit it, then Use this.`;
+  } catch (e) { $('impSt').textContent = e.message || 'Failed.'; }
+  finally { clearInterval(tick); $('impGo').disabled = false; $('impUse').disabled = !$('impOut').value.trim(); }
+}
+$('forever').onchange = () => { $('count').disabled = $('forever').checked; };
+
+$('f').addEventListener('submit', async e => {
+  e.preventDefault();
+  const body = {prompt: $('prompt').value, aspect: $('aspect').value, fast: $('fast').checked, mode,
+                seed: $('seed').value, negative: $('negative').value, images: inputs.map(i => i.data),
+                count: +$('count').value || 1, forever: $('forever').checked};
+  const r = await post('api/generate', body);
+  if (r.ok && mode !== 'normal') { $('prompt').value = ''; $('negative').value = ''; $('impOut').value = ''; $('impHint').value = ''; inputs = []; drawInputs(); }
+  refresh();
+});
+
+// ── live state ─────────────────────────────────────────────────────────────
+const est = j => (j.fast ? 300 : 670) * (j.edit ? 1.2 : 1);
+const fetched = new Set();
+async function claimTemp(j) {
+  if (fetched.has(j.id)) return;
+  fetched.add(j.id);
+  const r = await fetch('temp/' + j.id, {cache: 'no-store'});
+  if (!r.ok) return;
+  const url = URL.createObjectURL(await r.blob());
+  const box = document.createElement('div');
+  box.className = 'temp';
+  box.innerHTML = `<img src="${url}" alt=""><div class="bar2"><span>seed ${j.seed ?? ''}</span><button type="button" class="ghost small">Edit</button><button type="button" class="small">Discard</button></div>`;
+  box.querySelector('.ghost').onclick = () => editFrom(url);
+  box.querySelector('button:not(.ghost)').onclick = () => { URL.revokeObjectURL(url); box.remove(); $('viewer').hidden = !$('temps').children.length; };
+  $('temps').prepend(box);
+  $('viewer').hidden = false;
+}
+
+let lastGallery = '', bust = 0;
+async function refresh() {
+  try {
+    const r = await fetch('api/jobs');
+    const {jobs, series} = await r.json();
+    const now = Date.now() / 1000;
+    jobs.filter(j => j.mode === 'temporary' && j.status === 'done').forEach(claimTemp);
+
+    $('seriesBox').hidden = !series.length;
+    $('series').innerHTML = series.map(s => `<div class="series"><span class="p">${esc(s.prompt)}</span>
+      <span class="s">${s.done} done${s.left == null ? ' · keeps going' : ` · ${s.left} to go`}</span>
+      <button type="button" class="small" data-stop="${s.id}">Stop</button></div>`).join('');
+
+    lastJobs = jobs;
+    const visible = jobs.filter(j => !(j.mode === 'temporary' && j.status === 'done'));
+    $('jobs').innerHTML = visible.length ? visible.slice(0, 10).map(j => {
+      if (j.kind) return storyJobRow(j, now);
+      let s = j.status, bar = '';
+      if (j.status === 'running') {
+        const el = now - j.started, pct = Math.min(95, el / est(j) * 100);
+        s = `running · ${Math.floor(el / 60)}m${String(Math.floor(el % 60)).padStart(2, '0')}s of ~${Math.round(est(j) / 60)}m`;
+        bar = `<div class="bar"><i style="width:${pct}%"></i></div>`;
+      } else if (j.status === 'done') s = `done · seed ${j.seed}`;
+      const num = j.of > 1 ? `${j.n}/${j.of}` : (j.of == null ? `#${j.n}` : '');
+      const tags = [j.mode !== 'normal' && j.mode, j.edit && 'edit', j.story && `scene ${j.scene + 1}`, num].filter(Boolean).join(' · ');
+      const link = j.image ? `<a href="img/${encodeURIComponent(j.image)}" target="_blank">open</a>` : '';
+      const err = j.error ? `<div class="err">${esc(j.error)}</div>` : '';
+      return `<div class="job"><span class="p" title="${esc(j.prompt)}">${esc(j.prompt)}</span><span class="s">${tags ? tags + ' · ' : ''}${s}</span>${link}${bar}${err}</div>`;
+    }).join('') : '<p class="empty">Nothing queued.</p>';
+
+    const g = await (await fetch('api/gallery')).json();
+    if (g.join() !== lastGallery) {
+      lastGallery = g.join();
+      $('gallery').innerHTML = g.length ? g.map(n => { const u = 'img/' + encodeURIComponent(n);
+        return `<div class="cell"><img loading="lazy" src="${u}?v=${bust}" alt="" data-full="${u}" data-retry="0"><div class="acts"><button type="button" class="small" data-edit="${u}">Edit</button><button type="button" class="small ghost" data-saven="${esc(n)}" title="Save to library">★</button></div></div>`; }).join('')
+        : '<p class="empty">No images yet.</p>';
+    }
+    if (!$('tab-stories').hidden) {
+      normalStories = await (await fetch('api/stories')).json();
+      renderStories();
+    }
+  } catch (e) {}
+}
+// A thumbnail that failed to load retries a few times on its own.
+document.addEventListener('error', e => {
+  const img = e.target;
+  if (img.tagName !== 'IMG' || !img.dataset.retry || +img.dataset.retry >= 3) return;
+  img.dataset.retry = +img.dataset.retry + 1;
+  setTimeout(() => { img.src = img.src.split('?')[0] + '?r=' + Date.now(); }, 2000);
+}, true);
+$('reload').onclick = async () => {
+  $('reload').disabled = true;
+  lastGallery = ''; storySig = ''; bust = Date.now();
+  await refresh();
+  $('reload').disabled = false;
+};
+$('series').onclick = async e => { const id = e.target.dataset.stop; if (id) { await post('api/series/stop', {ids: [id]}); refresh(); } };
+
+// ── stories ────────────────────────────────────────────────────────────────
+let normalStories = [], lastJobs = [], storySig = '', storyHow = 'ai';
+const openStories = new Set(), picOpts = new Map();  // UI state kept across re-renders
+const words = t => (t || '').trim().split(/\s+/).filter(Boolean).length;
+function storyMode() { return mode === 'temporary' ? null : mode; }
+function storyNote() {
+  $('storyNote').textContent = mode === 'temporary' ? 'Stories aren\'t available in Temporary mode. Switch to Normal.' : 'Saved as a story on this PC.';
+}
+$('storyHow').onclick = e => {
+  const h = e.target.dataset.h; if (!h) return;
+  storyHow = h;
+  $('storyHow').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.h === h));
+  $('storyAi').hidden = h !== 'ai'; $('storyMe').hidden = h !== 'me';
+};
+async function storyPost(action, body) {
+  $('stMsg').textContent = '';
+  const r = await post('api/story/' + action, body);
+  const j = await r.json();
+  if (!r.ok) { $('stMsg').textContent = j.error || 'Failed.'; return null; }
+  storySig = ''; refresh();
+  return j;
+}
+$('stWrite').onclick = async () => {
+  if (!storyMode()) return storyNote();
+  if (castOut(formCast).length < formCast.length) { $('stMsg').textContent = 'Give every cast photo a name.'; return; }
+  if (await storyPost('write', {mode, idea: $('stIdea').value, genre: $('stGenre').value, length: $('stLen').value, cast: castOut(formCast)})) {
+    formCast.length = 0; castEditor($('stCast'), formCast);
+  }
+};
+$('stSave').onclick = async () => {
+  if (!storyMode()) return storyNote();
+  if (castOut(formCast).length < formCast.length) { $('stMsg').textContent = 'Give every cast photo a name.'; return; }
+  if (await storyPost('save', {mode, title: $('stTitle').value, text: $('stText').value, cast: castOut(formCast)})) {
+    $('stTitle').value = ''; $('stText').value = ''; formCast.length = 0; castEditor($('stCast'), formCast);
+  }
+};
+// Cast editor: list of {name, note, image (data URL), id?}. Photos are shrunk in
+// the browser first (max 1024 px) to keep uploads and the models' work small.
+function shrink(blob) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(blob);
+    img.onload = () => {
+      const k = Math.min(1, 1024 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      res(c.toDataURL('image/jpeg', 0.9));
+    };
+    img.onerror = rej;
+    img.src = url;
+  });
+}
+function castEditor(el, list, onChange = () => {}) {
+  const draw = () => {
+    el.innerHTML = list.map((c, i) => `<div class="castm"><img src="${c.image}" alt="">
+      <input value="${esc(c.name)}" placeholder="Name, e.g. Mia, the red car" data-i="${i}" data-k="name">
+      <input value="${esc(c.note)}" placeholder="Note, e.g. her dog, the magic sword" data-i="${i}" data-k="note">
+      <button type="button" class="ghost" data-rm="${i}">remove</button></div>`).join('') +
+      (list.length < 8 ? `<label class="upl"><input type="file" accept="image/*" multiple><span>+ Add photo</span></label>
+        <button type="button" class="ghost small" data-fromlib="1">+ From library</button>` : '');
+    const f = el.querySelector('input[type=file]');
+    if (f) f.onchange = async e => {
+      for (const file of e.target.files) if (list.length < 8) list.push({name: file.name.replace(/\.[^.]+$/, '').slice(0, 40), note: '', image: await shrink(file)});
+      draw(); onChange();
+    };
+  };
+  el.oninput = e => { const t = e.target.dataset; if (t.k) { list[+t.i][t.k] = e.target.value; onChange(); } };
+  el.onclick = e => {
+    const i = e.target.dataset.rm;
+    if (i !== undefined) { list.splice(+i, 1); draw(); onChange(); }
+    if (e.target.dataset.fromlib) openPicker(async a => {
+      if (list.length < 8) list.push({name: a.name, note: a.note || '', image: await toDataURL(a.url)});
+      draw(); onChange();
+    });
+  };
+  draw();
+}
+let formCast = [];
+castEditor($('stCast'), formCast);
+const castOut = list => list.filter(c => c.name.trim()).map(({name, note, image}) => ({name, note, image}));
+async function toDataURL(url) { return readAs(await (await fetch(url)).blob()); }
+async function storyCast(st) {  // the story's cast with data-URL images, ready to send
+  return Promise.all((st.cast || []).map(async c => ({name: c.name, note: c.note || '', image: c.url.startsWith('data:') ? c.url : await toDataURL(c.url)})));
+}
+
+function storyJobRow(j, now) {
+  let label, s = j.status, bar = '';
+  if (j.kind === 'story') {
+    label = `✍️ ${esc(j.idea)}`;
+    if (j.status === 'running') {
+      const w = words(j.text), pct = Math.min(95, w / j.words * 100);
+      s = `writing · ${w} of ~${j.words} words`;
+      bar = `<div class="bar"><i style="width:${pct}%"></i></div>`;
+    } else if (j.status === 'done') s = 'done · see Stories';
+  } else if (j.kind === 'revise') {
+    label = `✍️ AI ${j.how === 'continue' ? 'continuing' : 'editing'} a story`;
+    if (j.status === 'running') {
+      const w = words(j.text), pct = Math.min(95, w / j.words * 100);
+      s = `${w} of ~${j.words} words`;
+      bar = `<div class="bar"><i style="width:${pct}%"></i></div>`;
+    } else if (j.status === 'done') s = 'done · open the story\'s editor';
+  } else {
+    label = `🎬 picture story`;
+    if (j.status === 'running') s = `planning ${j.scenes_wanted} scenes…`;
+    else if (j.status === 'done') s = `${j.scenes} scenes queued`;
+  }
+  const stop = ['queued', 'running'].includes(j.status) ? `<button type="button" class="small" data-stopstory="${j.id}">Stop</button>` : '';
+  const err = j.error ? `<div class="err">${esc(j.error)}</div>` : '';
+  return `<div class="job"><span class="p">${label}</span><span class="s">${s}</span>${stop}${bar}${err}</div>`;
+}
+$('jobs').onclick = async e => { const id = e.target.dataset.stopstory; if (id) { await post('api/story/stop', {id}); refresh(); } };
+
+function allStories() {
+  const out = normalStories.map(st => ({...st,
+    cast: (st.cast || []).map(c => ({...c, url: `story-cast/${st.id}/${c.file}`}))}));
+  return out.sort((a, b) => b.created - a.created);
+}
+function scenesOf(st) {
+  return (st.scenes || []).map((sc, i) => {
+    const job = lastJobs.find(j => j.story === st.id && j.scene === i && !j.kind);
+    const busy = job && ['queued', 'running'].includes(job.status);
+    return {caption: sc.caption, prompt: sc.prompt || '', cast: sc.cast || [], img: sc.image ? 'img/' + encodeURIComponent(sc.image) : null,
+            hist: (sc.history || []).map(n => 'img/' + encodeURIComponent(n)),
+            state: busy ? job.status : sc.image ? 'done' : job ? job.status : 'waiting', busy, err: job && job.error};
+  });
+}
+const sceneEdits = new Map();  // "storyId:scene" -> {caption, prompt, base, cast: [names], fast}
+async function takeRevisions() {
+  for (const j of lastJobs.filter(x => x.kind === 'revise' && x.status === 'done' && storyEdits.has(x.story))) {
+    const r = await post('api/story/take', {id: j.id});
+    if (!r.ok) continue;
+    const res = await r.json(), ed = storyEdits.get(j.story);
+    if (res.how === 'continue') ed.text = ed.text.trimEnd() + '\n\n' + res.text;
+    else { ed.text = res.text; if (res.title) ed.title = res.title; }
+    const card = $('stories').querySelector(`[data-sid="${j.story}"]`);
+    if (card) {
+      const ta = card.querySelector('[data-e="text"]'), ti = card.querySelector('[data-e="title"]');
+      if (ta) ta.value = ed.text;
+      if (ti) ti.value = ed.title;
+    }
+  }
+}
+function renderStories() {
+  takeRevisions();
+  const live = lastJobs.filter(j => j.kind === 'story' && j.status === 'running' && j.text);
+  $('storyLive').innerHTML = live.map(j => `<div class="card story"><div class="hd"><b>Writing…</b><span class="note">${words(j.text)} of ~${j.words} words</span></div><div class="live">${esc(j.text)}</div></div>`).join('');
+  const list = allStories();
+  const boards = lastJobs.filter(j => j.kind === 'storyboard' && ['queued', 'running'].includes(j.status));
+  const sig = JSON.stringify([list.map(st => [st.id, (st.cast || []).map(c => c.name + c.url.length), scenesOf(st).map(x => [x.state, x.img, x.hist.length, x.caption])]),
+                              [...sceneEdits.keys()],
+                              boards.map(b => b.story + b.status), [...castEdits.keys()], [...storyEdits.keys()],
+                              lastJobs.filter(j => j.kind === 'revise').map(j => j.id + j.status)]);
+  updateRevNotes();
+  if (sig === storySig) return;
+  // Never redraw under someone typing; progress above still updates in place.
+  if ($('stories').contains(document.activeElement) && document.activeElement.matches('input,textarea,select')) return;
+  storySig = sig;
+  $('stories').innerHTML = list.length ? list.map(st => {
+    const sc = scenesOf(st), board = boards.find(b => b.story === st.id);
+    const o = picOpts.get(st.id) || {scenes: 6, style: '', aspect: 'landscape', fast: true, open: false};
+    const date = new Date(st.created * 1000).toLocaleString();
+    const scenes = sc.length ? `<div class="scenes">${sc.map((x, i) => {
+      const n = x.index ?? i, key = `${st.id}:${n}`, ed = sceneEdits.get(key);
+      const cell = `<div class="cell">${x.img
+        ? `<img src="${x.img}" alt="" data-full="${x.img}" data-retry="0">${x.busy ? `<span class="badge">redrawing${x.state === 'running' ? '…' : ' (queued)'}</span>` : ''}`
+        : `<div class="ph">${x.err ? 'failed' : esc(x.state)}${x.state === 'running' ? '…' : ''}</div>`}
+        <div class="acts"><button type="button" class="small ghost" data-scedit="${key}">✏️ Edit</button></div>
+        <div class="cap"><b>${n + 1}.</b> ${esc(x.caption)}</div>
+        ${x.hist.length ? `<div class="hist" title="Earlier versions">${x.hist.map(u => `<img src="${u}" alt="" data-full="${u}">`).join('')}</div>` : ''}</div>`;
+      if (!ed) return cell;
+      const castList = st.cast || [], max = ed.base && x.img ? 3 : 4;
+      return cell + `<div class="improve scedit" data-scpanel="${key}">
+        <b>Scene ${n + 1}</b>
+        <label>Words (caption)<textarea data-se="caption" style="min-height:60px">${esc(ed.caption)}</textarea></label>
+        <label>Picture prompt<textarea data-se="prompt" style="min-height:120px">${esc(ed.prompt)}</textarea></label>
+        ${castList.length ? `<div class="row"><span class="st">In this scene (max ${max}):</span>${castList.map(c => `<label class="chk"><input type="checkbox" data-secast="${esc(c.name)}" ${ed.cast.includes(c.name) ? 'checked' : ''}> ${esc(c.name)}</label>`).join('')}</div>` : ''}
+        <div class="row">
+          ${x.img ? `<label class="chk"><input type="checkbox" data-se="base" ${ed.base ? 'checked' : ''}> Start from the current picture</label>` : ''}
+          <label class="chk"><input type="checkbox" data-se="fast" ${ed.fast ? 'checked' : ''}> Fast</label>
+        </div>
+        <div class="row"><span class="st">Saves the words and prompt, then draws a new version (~5 min fast, ~11 normal). The old picture stays under the caption.</span>
+          <button type="button" class="small" data-scgo="${key}">Redraw this scene</button>
+          ${n < Math.max(...sc.map((y, j) => y.index ?? j)) ? `<button type="button" class="ghost small" data-scgo="${key}" data-later="1">Redraw this + later scenes</button>` : ''}
+          <button type="button" class="ghost small" data-sccancel="${key}">Cancel</button></div>
+      </div>`;
+    }).join('')}</div>` : '';
+    return `<div class="card story" data-sid="${st.id}">
+      <div class="hd"><b>${esc(st.title)}</b><span class="note">${st.by === 'you' ? 'by you' : 'written by AI'} · ${words(st.text)} words · ${date}</span></div>
+      ${(st.cast || []).length ? `<div class="castv">${st.cast.map(c => `<span><img src="${c.url}" alt="">${esc(c.name)}</span>`).join('')}</div>` : ''}
+      <details ${openStories.has(st.id) ? 'open' : ''} data-open="${st.id}"><summary>Read</summary><div class="stext">${esc(st.text)}</div></details>
+      ${board ? `<div class="note">🎬 ${board.status === 'running' ? 'Planning scenes…' : 'Waiting to plan scenes…'}</div>` : ''}
+      ${scenes}
+      <div class="row">
+        <button type="button" class="ghost small" data-pics="${st.id}">🎬 ${sc.length ? 'New picture story' : 'Make picture story'}</button>
+        <button type="button" class="ghost small" data-editstory="${st.id}">Edit</button>
+        <button type="button" class="ghost small" data-castedit="${st.id}">Cast (${(st.cast || []).length})</button>
+        <button type="button" class="ghost small" data-copy="${st.id}">Copy text</button>
+        <button type="button" class="small" data-delstory="${st.id}">Delete</button>
+      </div>
+      ${storyEdits.has(st.id) ? `<div class="improve" data-editpanel="${st.id}">
+        <input value="${esc(storyEdits.get(st.id).title)}" data-e="title" placeholder="Title">
+        <textarea style="min-height:260px" data-e="text">${esc(storyEdits.get(st.id).text)}</textarea>
+        <div class="row">
+          <label style="flex:3 1 220px">✨ Ask the AI<input value="${esc(storyEdits.get(st.id).ask || '')}" data-e="ask" placeholder="e.g. make the ending darker, add dialogue, shorten it"></label>
+          <label>How<select data-e="how"><option value="rewrite" ${storyEdits.get(st.id).how === 'continue' ? '' : 'selected'}>Rewrite the story</option>
+            <option value="continue" ${storyEdits.get(st.id).how === 'continue' ? 'selected' : ''}>Continue from the end</option></select></label>
+          <button type="button" class="ghost small" data-ask="${st.id}">Ask AI</button>
+        </div>
+        <div data-revnote="${st.id}"></div>
+        <div class="row"><span class="st">Existing pictures stay as they are; make a new picture story to redraw.</span>
+          <button type="button" class="small" data-editsave="${st.id}">Save</button>
+          <button type="button" class="ghost small" data-editcancel="${st.id}">Cancel</button></div>
+      </div>` : ''}
+      <div class="improve" data-castpanel="${st.id}" ${castEdits.has(st.id) ? '' : 'hidden'}>
+        <div class="cast" data-castlist="${st.id}"></div>
+        <div class="row"><span class="st">Used by new picture stories. Each photo adds ~25 s of planning.</span>
+          <button type="button" class="small" data-castsave="${st.id}">Save cast</button>
+          <button type="button" class="ghost small" data-castcancel="${st.id}">Cancel</button></div>
+      </div>
+      <div class="improve" data-panel="${st.id}" ${o.open ? '' : 'hidden'}>
+        <div class="row">
+          <label>Scenes<input type="number" min="2" max="10" value="${o.scenes}" data-o="scenes"></label>
+          <label>Shape<select data-o="aspect">${['landscape', 'square', 'portrait', 'wide', 'tall'].map(a => `<option ${a === o.aspect ? 'selected' : ''}>${a}</option>`).join('')}</select></label>
+          <label>Art style<input value="${esc(o.style)}" placeholder="e.g. watercolor storybook, photoreal, anime" data-o="style"></label>
+          <label class="chk"><input type="checkbox" data-o="fast" ${o.fast ? 'checked' : ''}> Fast</label>
+        </div>
+        <div class="row"><span class="st">Plans scenes on this PC (~1 min per scene), then draws each on Predator (~5 min each fast, ~11 normal).</span>
+          <button type="button" class="small" data-go="${st.id}">Make it</button></div>
+      </div>
+    </div>`;
+  }).join('') : '<p class="empty">No stories yet.</p>';
+  for (const [id, list] of castEdits) {
+    const el = $('stories').querySelector(`[data-castlist="${id}"]`);
+    if (el) castEditor(el, list);
+  }
+  updateRevNotes();
+}
+// Live AI-edit progress, written into each open editor without redrawing it.
+function updateRevNotes() {
+  $('stories').querySelectorAll('[data-revnote]').forEach(el => {
+    const j = lastJobs.find(x => x.kind === 'revise' && x.story === el.dataset.revnote && ['queued', 'running'].includes(x.status));
+    const html = j ? `<div class="note">AI is ${j.how === 'continue' ? 'continuing' : 'rewriting'}… ${words(j.text)} of ~${j.words} words${j.status === 'queued' ? ' (waiting for the text model)' : ''}. When it's done it goes into the editor above; nothing is saved until you press Save.</div>
+      ${j.text ? `<div class="live" style="border-top:1px solid var(--line);padding-top:6px">${esc(j.text)}</div>` : ''}` : '';
+    if (el.innerHTML !== html) el.innerHTML = html;
+  });
+}
+const castEdits = new Map();  // story id -> cast list being edited
+const storyEdits = new Map(); // story id -> {title, text} being edited
+$('stories').addEventListener('input', e => {
+  const k = e.target.dataset.e, card = e.target.closest('[data-sid]');
+  if (k && card && storyEdits.has(card.dataset.sid)) storyEdits.get(card.dataset.sid)[k] = e.target.value;
+});
+$('stories').addEventListener('input', e => {
+  const panel = e.target.closest('[data-scpanel]'); if (!panel) return;
+  const ed = sceneEdits.get(panel.dataset.scpanel), t = e.target.dataset;
+  if (t.se) ed[t.se] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+  else if (t.secast !== undefined) ed.cast = e.target.checked ? [...new Set([...ed.cast, t.secast])] : ed.cast.filter(n => n !== t.secast);
+});
+$('stories').addEventListener('toggle', e => {
+  const id = e.target.dataset?.open; if (!id) return;
+  e.target.open ? openStories.add(id) : openStories.delete(id);
+}, true);
+$('stories').addEventListener('input', e => {
+  const k = e.target.dataset.o, card = e.target.closest('[data-sid]'); if (!k || !card) return;
+  const o = picOpts.get(card.dataset.sid) || {scenes: 6, style: '', aspect: 'landscape', fast: true, open: true};
+  o[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+  picOpts.set(card.dataset.sid, o);
+});
+async function sceneClick(e) {
+  const t = e.target.dataset, key = t.scedit || t.scgo || t.sccancel;
+  if (!key) return false;
+  const [sid, n] = key.split(':'), st = allStories().find(x => x.id === sid);
+  const x = st && scenesOf(st).find((y, i) => (y.index ?? i) === +n);
+  if (!x) return true;
+  if (t.scedit) {
+    if (sceneEdits.has(key)) sceneEdits.delete(key);
+    else sceneEdits.set(key, {caption: x.caption || '', prompt: x.prompt || '', base: !!x.img, fast: (picOpts.get(sid) || {fast: true}).fast,
+                              cast: x.cast.filter(nm => (st.cast || []).some(c => c.name === nm))});
+  } else if (t.sccancel) sceneEdits.delete(key);
+  else {
+    const ed = sceneEdits.get(key), panel = e.target.closest('[data-scpanel]');
+    const base = ed.base && x.img, max = base ? 3 : 4;
+    if (!ed.prompt.trim()) { e.target.textContent = 'Write a prompt'; return true; }
+    if (ed.cast.length > max) { e.target.textContent = `Pick at most ${max} cast`; return true; }
+    e.target.disabled = true; e.target.textContent = 'Sending…';
+    const all = await storyCast(st), cast = all.filter(c => ed.cast.includes(c.name));
+    // Later scenes keep their own words/prompt; each starts from its current picture and
+    // follows the newly drawn scene before it (the server chains them one by one).
+    const then = t.later ? await Promise.all(scenesOf(st).map((y, i) => ({y, k: y.index ?? i})).filter(({k}) => k > +n)
+      .map(async ({y, k}) => ({scene: k, prompt: y.prompt, caption: y.caption, base: y.img ? await toDataURL(y.img) : '',
+                               cast: all.filter(c => y.cast.includes(c.name)).slice(0, 2)}))) : [];
+    const r = await post('api/story/scene', {mode: 'normal', story: sid, scene: +n,
+      caption: ed.caption, prompt: ed.prompt, fast: ed.fast, cast, aspect: st.aspect || (picOpts.get(sid) || {}).aspect || 'landscape',
+      base: base ? await toDataURL(x.img) : '', then});
+    if (!r.ok) { e.target.disabled = false; e.target.textContent = (await r.json()).error || 'Failed'; return true; }
+    sceneEdits.delete(key);
+    if (panel) panel.remove();
+  }
+  storySig = ''; renderStories(); refresh();
+  return true;
+}
+$('stories').onclick = async e => {
+  if (await sceneClick(e)) return;
+  const t = e.target.dataset, st = allStories().find(x => x.id === (t.pics || t.go || t.delstory || t.copy || t.castedit || t.castsave || t.castcancel
+                                                                     || t.editstory || t.editsave || t.editcancel || t.ask));
+  if (!st) return;
+  if (t.editstory) {
+    storyEdits.has(st.id) ? storyEdits.delete(st.id) : storyEdits.set(st.id, {title: st.title, text: st.text});
+    openStories.add(st.id); storySig = ''; renderStories(); return;
+  }
+  if (t.ask) {
+    const ed = storyEdits.get(st.id);
+    e.target.disabled = true;
+    const r = await post('api/story/revise', {mode: 'normal', story: st.id, title: ed.title, text: ed.text,
+                                              instruction: ed.ask || '', how: ed.how || 'rewrite', cast: await storyCast(st)});
+    storySig = ''; refresh(); return;
+  }
+  if (t.editcancel) { storyEdits.delete(st.id); storySig = ''; renderStories(); return; }
+  if (t.editsave) {
+    const ed = storyEdits.get(st.id);
+    if (!ed.text.trim()) { e.target.textContent = 'Story is empty'; return; }
+    e.target.disabled = true;
+    const r = await post('api/story/edit', {mode: 'normal', story: st.id, title: ed.title, text: ed.text,
+                                            idea: st.idea || '', genre: st.genre || '', by: st.by || '', created: st.created});
+    if (!r.ok) { e.target.disabled = false; e.target.textContent = 'Save failed'; return; }
+    storyEdits.delete(st.id); storySig = ''; refresh(); return;
+  }
+  if (t.castedit) {
+    if (castEdits.has(st.id)) castEdits.delete(st.id);
+    else castEdits.set(st.id, (await storyCast(st)).map((c, i) => ({...c, id: (st.cast[i] || {}).id})));
+    storySig = ''; renderStories(); return;
+  }
+  if (t.castcancel) { castEdits.delete(st.id); storySig = ''; renderStories(); return; }
+  if (t.castsave) {
+    const list = castEdits.get(st.id);
+    if (castOut(list).length < list.length) { e.target.textContent = 'Name every photo'; return; }
+    e.target.disabled = true;
+    const r = await post('api/story/cast', {mode: 'normal', story: st.id, cast: castOut(list)});
+    castEdits.delete(st.id); storySig = ''; refresh(); return;
+  }
+  if (t.pics) {
+    const o = picOpts.get(st.id) || {scenes: 6, style: '', aspect: 'landscape', fast: true, open: false};
+    o.open = !o.open; picOpts.set(st.id, o);
+    e.target.closest('.story').querySelector('[data-panel]').hidden = !o.open;
+  } else if (t.go) {
+    const o = picOpts.get(st.id) || {scenes: 6, style: '', aspect: 'landscape', fast: true};
+    e.target.disabled = true;
+    if (await storyPost('pictures', {mode: 'normal', story: st.id, title: st.title, text: st.text,
+                                     scenes: +o.scenes || 6, style: o.style, aspect: o.aspect, fast: o.fast, cast: await storyCast(st)})) {
+      o.open = false; picOpts.set(st.id, o); storySig = ''; renderStories();
+    }
+    e.target.disabled = false;
+  } else if (t.copy) {
+    try { await navigator.clipboard.writeText(st.title + '\n\n' + st.text); e.target.textContent = 'Copied'; } catch (_) { e.target.textContent = 'Copy failed'; }
+  } else if (t.delstory) {
+    if (e.target.dataset.armed !== '1') {
+      e.target.dataset.armed = '1'; e.target.textContent = 'Really delete? (its pictures stay in the gallery)';
+      setTimeout(() => { e.target.dataset.armed = ''; e.target.textContent = 'Delete'; }, 4000);
+      return;
+    }
+    await post('api/story/delete', {id: st.id});
+    storySig = ''; refresh();
+  }
+};
+
+// ── library ────────────────────────────────────────────────────────────────
+let normalAssets = [], libSig = '';
+async function loadAssets() {
+  try { normalAssets = await (await fetch('api/assets')).json(); } catch (e) {}
+  if (!normalStories.length) try { normalStories = await (await fetch('api/stories')).json(); } catch (e) {}
+}
+// What a picker offers: library photos plus every story's cast photos.
+function libraryFor() {
+  const out = normalAssets.map(a => ({name: a.name, note: a.note, url: 'asset/' + a.file, tag: ''}));
+  const seen = new Set();
+  for (const st of normalStories) for (const c of st.cast || []) {
+    const url = `story-cast/${st.id}/${c.file}`;
+    if (!seen.has(url)) { seen.add(url); out.push({name: c.name, note: c.note, url, tag: 'cast of ' + st.title}); }
+  }
+  return out;
+}
+let pickCb = null;
+async function openPicker(cb) {
+  await loadAssets();
+  const list = libraryFor();
+  pickCb = a => { $('pickWrap').hidden = true; cb(a); };
+  $('pickGrid').innerHTML = list.length ? list.map((a, i) => `<div class="cell" data-pick="${i}"><img src="${esc(a.url)}" alt="" data-pick="${i}">
+    <div class="cap" data-pick="${i}"><b>${esc(a.name)}</b>${a.tag ? ' · ' + esc(a.tag) : ''}</div></div>`).join('')
+    : '<p class="empty">The library is empty. Add photos in the Library tab or press ★ on an image.</p>';
+  $('pickGrid').onclick = e => { const i = e.target.closest('[data-pick]')?.dataset.pick; if (i !== undefined) pickCb(list[+i]); };
+  $('pickWrap').hidden = false;
+}
+$('pickClose').onclick = () => { $('pickWrap').hidden = true; };
+$('fromLib').onclick = () => openPicker(a => editFrom(a.url));
+
+async function renderLibrary(load) {
+  if (load) await loadAssets();
+  const sig = JSON.stringify(normalAssets.map(a => a.id + a.name + a.note));
+  if (sig === libSig || $('tab-library').contains(document.activeElement) && document.activeElement.matches('input')) return;
+  libSig = sig;
+  const cell = (id, url, a, k) => `<div class="cell" data-${k}="${id}"><img src="${esc(url)}" alt="" data-full="${esc(url)}">
+    <input value="${esc(a.name)}" data-f="name" placeholder="Name"><input value="${esc(a.note || '')}" data-f="note" placeholder="Note">
+    <div class="row"><button type="button" class="small ghost" data-libsave="1">Save</button>
+    <button type="button" class="small ghost" data-edit="${esc(url)}">Edit with it</button>
+    <button type="button" class="small" data-libdel="1">Delete</button></div></div>`;
+  $('libN').innerHTML = normalAssets.length ? normalAssets.map(a => cell(a.id, 'asset/' + a.file, a, 'an')).join('') : '<p class="empty">No photos yet.</p>';
+}
+$('libAddN').onchange = async e => {
+  for (const f of e.target.files) await post('api/asset/save', {name: f.name.replace(/\.[^.]+$/, '').slice(0, 40), image: await shrink(f)});
+  e.target.value = ''; renderLibrary(true);
+};
+$('tab-library').onclick = async e => {
+  const t = e.target.dataset, c = e.target.closest('[data-an]');
+  if (!c || !(t.libsave || t.libdel)) return;
+  const name = c.querySelector('[data-f=name]').value, note = c.querySelector('[data-f=note]').value;
+  if (t.libdel && e.target.dataset.armed !== '1') { e.target.dataset.armed = '1'; e.target.textContent = 'Really?'; return; }
+  await post('api/asset/' + (t.libsave ? 'save' : 'delete'), {id: c.dataset.an, name, note});
+  libSig = ''; renderLibrary(true);
+};
+// ★ on a gallery image: copied into the library on the server.
+document.addEventListener('click', async e => {
+  const t = e.target.dataset || {};
+  if (t.saven) {
+    e.target.disabled = true;
+    const r = await post('api/asset/save', {gallery: t.saven, name: 'Saved ' + new Date().toLocaleDateString()});
+    e.target.textContent = r.ok ? '✓' : '!'; libSig = '';
+  }
+});
+
+// ── shared: edit buttons and lightbox ──────────────────────────────────────
+document.addEventListener('click', e => {
+  const t = e.target.dataset || {};
+  if (t.edit) editFrom(t.edit);
+  else if (t.full) { $('lightbox').querySelector('img').src = t.full; $('lightbox').hidden = false; }
+});
+$('lightbox').onclick = () => { $('lightbox').hidden = true; $('lightbox').querySelector('img').src = ''; };
+
+setMode('normal');
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

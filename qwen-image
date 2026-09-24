@@ -1,0 +1,289 @@
+#!/usr/bin/env python3
+"""Generate an image with Qwen-Image 2.1 (Q4_K_M GGUF) on Predator's ComfyUI.
+
+  qwen-image "prompt" [--size 1024x1024 | --aspect portrait] [--steps 25]
+             [--seed N] [--negative "..."] [--fast]
+  qwen-image "edit instruction" --image in.png [--image ref2.png ...]
+  qwen-image status | start | stop
+
+Editing: pass up to 4 --image files; refer to them in the prompt as
+<image1>, <image2>, ... The output takes the size of the first image
+(scaled to about 1 megapixel, or ~0.6 MP with --fast).
+
+Predator (GTX 1060 6GB) runs ComfyUI at D:\\ComfyUI, bound to its localhost;
+we reach it over an SSH tunnel on 127.0.0.1:18188. The server process is held
+by a detached local ssh session (Windows scheduled tasks don't start it when
+nobody is logged on). Measured: ~26 s/step at 1024x1024 -> ~11 min per image.
+
+Last stdout line is `MEDIA:<png path>` so Hermes can attach the file.
+"""
+import argparse, json, os, random, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
+from pathlib import Path
+
+HOST = os.environ.get("QWEN_IMAGE_HOST", "user@render-host")  # ssh target running ComfyUI
+PORT = 18188
+BASE = f"http://127.0.0.1:{PORT}"
+OUT_DIR = Path(os.environ.get("IMAGINE_GALLERY", Path.home() / ".hermes/image_cache/qwen-image"))
+LOG = Path.home() / ".cache/qwen-image-server.log"
+SSH = ["ssh", "-o", "ConnectTimeout=8", "-o", "BatchMode=yes"]
+ASPECTS = {"square": (1024, 1024), "portrait": (832, 1216), "landscape": (1216, 832),
+           "wide": (1344, 768), "tall": (768, 1344)}
+
+
+def api(path, data=None, timeout=15):
+    req = urllib.request.Request(BASE + path, data=json.dumps(data).encode() if data else None,
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read()
+
+
+def up():
+    try:
+        api("/system_stats", timeout=4)
+        return True
+    except Exception:
+        return False
+
+
+def tunnel():
+    subprocess.run(SSH + ["-f", "-N", "-o", "ExitOnForwardFailure=yes",
+                          "-L", f"{PORT}:127.0.0.1:8188", HOST],
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
+
+
+def remote(cmd, timeout=20):
+    return subprocess.run(SSH + [HOST, cmd], capture_output=True, text=True, timeout=timeout).stdout
+
+
+def start():
+    if up():
+        return
+    tunnel()
+    if up():
+        return
+    if subprocess.run(["ping", "-c1", "-W2", HOST.split("@")[1]], capture_output=True).returncode:
+        sys.exit("Predator unreachable (is this box on WiFi N1 and Predator powered on?)")
+    busy = remote('tasklist /FI "IMAGENAME eq llama-server.exe" /NH & tasklist /FI "IMAGENAME eq llama-bench.exe" /NH')
+    if "llama-" in busy:
+        sys.exit("Predator GPU is busy with llama-server/llama-bench; stop it first (never share the 6GB GPU).")
+    # Another caller (web page, Discord) may be mid-start; launching a second
+    # server just fails to bind but still grabs VRAM.
+    running = remote('powershell -Command "(Get-CimInstance Win32_Process | '
+                     "Where-Object { $_.Name -eq 'python.exe' -and $_.CommandLine -like '*main.py --listen*' } | "
+                     'Measure-Object).Count"').strip()
+    launch = running in ("", "0")
+    LOG.parent.mkdir(parents=True, exist_ok=True)
+    if launch: subprocess.Popen(SSH + [HOST, r'cmd /c "cd /d D:\ComfyUI && venv\Scripts\python main.py --listen 127.0.0.1 --port 8188 --disable-metadata"'],
+                     stdout=open(LOG, "ab"), stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                     start_new_session=True)
+    for _ in range(60):
+        time.sleep(3)
+        tunnel()
+        if up():
+            return
+    sys.exit(f"ComfyUI did not come up; see {LOG}")
+
+
+def stop():
+    remote('powershell -Command "Get-CimInstance Win32_Process | '
+           "Where-Object { $_.Name -eq 'python.exe' -and $_.CommandLine -like '*main.py --listen*' } | "
+           'ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"')
+    subprocess.run(["pkill", "-f", f"{PORT}:127.0.0.1:8188"], capture_output=True)
+    print("stopped")
+
+
+def upload(data, suffix=".png"):
+    """Upload image bytes to Predator's ComfyUI input folder; returns its name there."""
+    boundary = "----qimg" + os.urandom(8).hex()
+    name = f"qimg_{os.urandom(6).hex()}{suffix}"
+    body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"image\"; filename=\"{name}\"\r\n"
+            f"Content-Type: application/octet-stream\r\n\r\n").encode() + data + \
+           f"\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"overwrite\"\r\n\r\ntrue\r\n--{boundary}--\r\n".encode()
+    req = urllib.request.Request(BASE + "/upload/image", data=body,
+                                 headers={"Content-Type": f"multipart/form-data; boundary={boundary}"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return json.loads(r.read())["name"]
+
+
+def cleanup_inputs(names):
+    for n in names:
+        remote(f'del /f /q "D:\\ComfyUI\\input\\{n}"')
+
+
+def workflow(a, w, h, inputs=()):
+    wf = {
+        "1": {"class_type": "UnetLoaderGGUF", "inputs": {"unet_name": "qwen-image-2.1-Q4_K_M.gguf"}},
+        "2": {"class_type": "CLIPLoader", "inputs": {"clip_name": "qwen3vl_8b_int8_convrot.safetensors",
+                                                     "type": "qwen_image", "device": "default"}},
+        "3": {"class_type": "VAELoader", "inputs": {"vae_name": "qwen_image_2.1_vae_bf16.safetensors"}},
+        "4": {"class_type": "TextEncodeQwenImage21", "inputs": {"clip": ["2", 0], "prompt": a.prompt,
+                                                                "negative_prompt": a.negative, "resolution": 1024}},
+        "5": {"class_type": "EmptyLatentImage", "inputs": {"width": w, "height": h, "batch_size": 1}},
+        "6": {"class_type": "KSampler", "inputs": {"model": ["1", 0], "positive": ["4", 0], "negative": ["4", 1],
+                                                   "latent_image": ["5", 0], "seed": a.seed, "steps": a.steps,
+                                                   "cfg": 1, "sampler_name": "euler", "scheduler": "simple",
+                                                   "denoise": 1}},
+        "7": {"class_type": "VAEDecode", "inputs": {"samples": ["6", 0], "vae": ["3", 0]}},
+        "8": {"class_type": "SaveImage", "inputs": {"images": ["7", 0], "filename_prefix": "hermes"}},
+    }
+    if inputs:
+        # Edit mode: reference images go into the text encoder (which also needs
+        # the VAE), and the encoder's latent (sized from image 1) replaces the
+        # empty latent.
+        enc = wf["4"]["inputs"]
+        enc["vae"] = ["3", 0]
+        enc["resolution"] = 768 if a.fast else 1024
+        for i, name in enumerate(inputs, 1):
+            wf[f"10{i}"] = {"class_type": "LoadImage", "inputs": {"image": name}}
+            enc[f"images.image_{i}"] = [f"10{i}", 0]
+        if not getattr(a, "cast", False):
+            # Editing: the output takes image 1's size.
+            del wf["5"]
+            wf["6"]["inputs"]["latent_image"] = ["4", 2]
+        # Cast references (a.cast): the images only guide who/what appears;
+        # the output keeps the chosen aspect from the empty latent.
+    return wf
+
+
+def render(a, images=(), log=print):
+    """Run one job; returns PNG bytes. Raises RuntimeError on failure.
+
+    With a.temp the result comes back over ComfyUI's websocket
+    (SaveImageWebsocket), so the output never touches Predator's disk; uploaded
+    inputs and the history entry are deleted afterwards.
+    """
+    if a.fast:
+        w, h, a.steps = 768, 768, min(a.steps, 20)
+    elif a.size:
+        w, h = (int(x) for x in a.size.lower().split("x"))
+    else:
+        w, h = ASPECTS[a.aspect]
+    w, h = w // 16 * 16, h // 16 * 16
+    a.seed = a.seed if a.seed is not None else random.randint(0, 2**31)
+    start()
+    inputs = [upload(b) for b in list(images)[:4]]
+    wf = workflow(a, w, h, inputs)
+    try:
+        if a.temp:
+            return _render_ws(a, wf, w, h, log)
+        return _render_saved(a, wf, w, h, log)
+    finally:
+        cleanup_inputs(inputs)
+
+
+def _submit(wf, client_id=None):
+    body = {"prompt": wf}
+    if client_id:
+        body["client_id"] = client_id
+    try:
+        return json.loads(api("/prompt", body))["prompt_id"]
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"rejected: {e.read().decode()[:800]}")
+
+
+def _render_saved(a, wf, w, h, log):
+    pid = _submit(wf)
+    log(f"queued {pid} {w}x{h} steps={a.steps} seed={a.seed}")
+    while True:
+        time.sleep(10)
+        hist = json.loads(api(f"/history/{pid}")).get(pid)
+        if hist and (hist.get("status", {}).get("completed") is not None
+                     or hist.get("status", {}).get("status_str") == "error"):
+            break
+    status = hist["status"]
+    if status.get("status_str") != "success":
+        msgs = [m for m in status.get("messages", []) if m[0] == "execution_error"]
+        raise RuntimeError(f"generation failed: {json.dumps(msgs)[:800]}")
+    img = hist["outputs"]["8"]["images"][0]
+    q = urllib.parse.urlencode({"filename": img["filename"], "subfolder": img["subfolder"], "type": img["type"]})
+    return api(f"/view?{q}", timeout=60)
+
+
+def _render_ws(a, wf, w, h, log):
+    import websocket  # websocket-client
+    wf["8"] = {"class_type": "SaveImageWebsocket", "inputs": {"images": ["7", 0]}}
+    cid = os.urandom(8).hex()
+    ws = websocket.create_connection(f"ws://127.0.0.1:{PORT}/ws?clientId={cid}", timeout=3600)
+    pid = None
+    try:
+        pid = _submit(wf, cid)
+        log(f"queued {pid} {w}x{h} steps={a.steps} seed={a.seed}")
+        node, png = None, None
+        while True:
+            msg = ws.recv()
+            if isinstance(msg, bytes):
+                if node == "8" and len(msg) > 8:
+                    png = msg[8:]  # 8-byte event/format header, then the PNG
+                continue
+            m = json.loads(msg)
+            d = m.get("data", {})
+            if d.get("prompt_id") not in (None, pid):
+                continue
+            if m["type"] == "executing":
+                node = d.get("node")
+                if node is None and d.get("prompt_id") == pid:
+                    break
+            elif m["type"] == "execution_error":
+                raise RuntimeError(f"generation failed: {d.get('exception_message', '')[:400]}")
+            elif m["type"] == "execution_success":
+                break
+        if not png:
+            raise RuntimeError("no image received")
+        return png
+    finally:
+        ws.close()
+        if pid:
+            try:
+                api("/history", {"delete": [pid]})
+            except Exception:
+                pass
+
+
+def generate(a):
+    t0 = time.time()
+    images = [Path(f).read_bytes() for f in a.image]
+    try:
+        data = render(a, images, log=lambda s: print(s, flush=True))
+    except RuntimeError as e:
+        sys.exit(str(e))
+    if a.out:
+        out = Path(a.out)
+    else:
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        out = OUT_DIR / f"qwen_{time.strftime('%Y%m%d_%H%M%S')}_{a.seed}.png"
+    out.write_bytes(data)
+    print(f"done in {time.time() - t0:.0f}s")
+    print(f"MEDIA:{out}")
+
+
+def main():
+    if len(sys.argv) == 2 and sys.argv[1] in ("status", "start", "stop"):
+        cmd = sys.argv[1]
+        if cmd == "stop":
+            return stop()
+        if cmd == "start":
+            start()
+        if not up():
+            tunnel()
+        if up():
+            q = json.loads(api("/queue"))
+            print(f"up; running={len(q['queue_running'])} pending={len(q['queue_pending'])}")
+        else:
+            print("down")
+        return
+    p = argparse.ArgumentParser(description="Qwen-Image 2.1 on Predator")
+    p.add_argument("prompt")
+    p.add_argument("--negative", default="")
+    p.add_argument("--size", help="WxH, e.g. 1024x1024")
+    p.add_argument("--aspect", choices=ASPECTS, default="square")
+    p.add_argument("--steps", type=int, default=25)
+    p.add_argument("--seed", type=int)
+    p.add_argument("--fast", action="store_true", help="768x768, <=20 steps (~4-5 min)")
+    p.add_argument("--temp", action="store_true", help="leave nothing on Predator: result via websocket, history deleted")
+    p.add_argument("--out", help="write the PNG here instead of the gallery folder")
+    p.add_argument("--image", action="append", default=[], help="input image to edit (repeatable, max 4)")
+    generate(p.parse_args())
+
+
+if __name__ == "__main__":
+    main()
