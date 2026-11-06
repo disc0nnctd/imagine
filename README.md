@@ -1,5 +1,7 @@
 # Imagine
 
+> **Status: retired (2026-10).** This repo keeps the original single-file prototype and the lessons from building it, see [LEARNINGS.md](LEARNINGS.md). The later mobile/multi-user app is not part of this repo.
+
 A small self-hosted web UI for **Qwen-Image 2.1** running in ComfyUI on a
 separate GPU machine, reached over SSH. It uses only the Python standard
 library, plus `websocket-client` for temporary mode.
